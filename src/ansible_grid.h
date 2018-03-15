@@ -15,6 +15,8 @@
 #define KRIA_NUM_PARAMS 7
 #define KRIA_NUM_PATTERNS 16
 
+#define GRID_KEY_HOLD_TIME 15
+
 typedef struct {
 	u8 tr[16];
 	u8 oct[16];
@@ -100,6 +102,13 @@ typedef struct {
 	mp_data_t m[GRID_PRESETS];
 } mp_state_t;
 
+// variables extracted from .c so other source files can include them
+bool grid_preset_mode;
+u8 key_count = 0;
+u8 held_keys[32];
+u8 key_times[128];
+uint8_t preset;
+void (*grid_refresh)(void);
 
 void set_mode_grid(void);
 

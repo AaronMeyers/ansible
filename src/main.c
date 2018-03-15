@@ -59,6 +59,7 @@ usb flash
 // ansible
 #include "main.h"
 #include "ansible_grid.h"
+// #include "ansible_am.h"
 #include "ansible_arc.h"
 #include "ansible_midi.h"
 #include "ansible_tt.h"
@@ -502,6 +503,7 @@ int main(void)
 		default_midi_standard();
 		default_midi_arp();
 		default_tt();
+		// amDefault();
 
 		flash_unfresh();
 	}
@@ -522,6 +524,7 @@ int main(void)
 	init_kria();
 	init_mp();
 	init_tt();
+	// amInit();
 
 	print_dbg("\r\ni2c addr: ");
 	print_dbg_hex(f.state.i2c_addr);

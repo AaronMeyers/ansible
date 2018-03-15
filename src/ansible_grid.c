@@ -17,19 +17,19 @@
 
 #include "init_ansible.h"
 
+#include "ansible_am.h"
+
 
 #define L2 12
 #define L1 8
 #define L0 4
 
-#define GRID_KEY_HOLD_TIME 15
 
-bool preset_mode;
-uint8_t preset;
+// uint8_t preset;
 	
-u8 key_count = 0;
-u8 held_keys[32];
-u8 key_times[128];
+// u8 key_count = 0;
+// u8 held_keys[32];
+// u8 key_times[128];
 
 bool clock_external;
 bool view_clock;
@@ -56,7 +56,7 @@ uint8_t scale_data[16][8];
 u8 cur_scale[8];
 void calc_scale(uint8_t s);
 
-void (*grid_refresh)(void);
+// void (*grid_refresh)(void);
 
 // KRIA
 kria_data_t k;
@@ -131,6 +131,19 @@ void set_mode_grid() {
 		resume_mp();
 		update_leds(2);
 		break;
+	case mGridAM:
+		app_event_handlers[kEventKey] = &amKey;
+		app_event_handlers[kEventTr] = &amTr;
+		app_event_handlers[kEventTrNormal] = &amTrNormal;
+		app_event_handlers[kEventMonomeGridKey] = &amGridKey;
+		app_event_handlers[kEventMonomeRefresh] = &amRefresh;
+		clock = &amClock;
+		clock_set(clock_period);
+		init_i2c_slave(II_AM_ADDR);
+		process_ii = &amII;
+		amResume();
+		update_leds(1);
+		break;
 	default:
 		break;
 	}
@@ -146,20 +159,22 @@ void set_mode_grid() {
 
 
 void handler_GridFrontShort(s32 data) {
-	if(preset_mode) {
+	if(grid_preset_mode) {
 		// print_dbg("\r\n> PRESET EXIT");
-		preset_mode = false;
+		grid_preset_mode = false;
 
 		if(ansible_mode == mGridMP)
 			grid_refresh = &refresh_mp;
-		else
-			grid_refresh = &refresh_kria;
+		else if ( ansible_mode == mGridKria )
+			grid_refresh = &amDraw;
+		else if ( ansible_mode == mGridAM )
+			grid_refresh = &amDraw;
 		view_config = false;
 		view_clock = false;
 	}
 	else {
 		// print_dbg("\r\n> PRESET ENTER");
-		preset_mode = true;
+		grid_preset_mode = true;
 		grid_refresh = &refresh_preset;
 		view_config = false;
 		view_clock = false;
@@ -169,7 +184,9 @@ void handler_GridFrontShort(s32 data) {
 void handler_GridFrontLong(s32 data) {
 	if(ansible_mode == mGridKria)
 		set_mode(mGridMP);
-	else
+	else if ( ansible_mode == mGridMP )
+		set_mode(mGridAM);
+	else if ( ansible_mode == mGridAM )
 		set_mode(mGridKria);
 }
 
@@ -196,6 +213,11 @@ void refresh_preset(void) {
 				if(k.glyph[i1] & (1<<i2))
 					monomeLedBuffer[i1*16+i2+8] = 9;
 		break;
+	case mGridAM:
+		for(i1=0;i1<8;i1++)
+			for(i2=0;i2<8;i2++)
+				if(am.glyph[i1] & (1<<i2))
+					monomeLedBuffer[i1*16+i2+8] = 9;
 	default: break;
 	}
 
@@ -207,7 +229,7 @@ void grid_keytimer(void) {
 	for(uint8_t i1=0;i1<key_count;i1++) {
 		if(key_times[held_keys[i1]])
 		if(--key_times[held_keys[i1]]==0) {
-			if(preset_mode == 1) {
+			if(grid_preset_mode == 1) {
 				if(held_keys[i1] % 16 == 0) {
 					preset = held_keys[i1] / 16;
 
@@ -221,7 +243,7 @@ void grid_keytimer(void) {
 
 						flashc_memcpy((void *)&f.scale, &scale_data, sizeof(scale_data), true);
 
-						preset_mode = false;
+						grid_preset_mode = false;
 						grid_refresh = &refresh_mp;
 					} else if(ansible_mode == mGridKria) {
 						flashc_memset8((void*)&(f.kria_state.preset), preset, 1, true);
@@ -232,8 +254,12 @@ void grid_keytimer(void) {
 
 						flashc_memcpy((void *)&f.scale, &scale_data, sizeof(scale_data), true);
 
-						preset_mode = false;
+						grid_preset_mode = false;
 						grid_refresh = &refresh_kria;
+					} else if ( ansible_mode == mGridAM ) {
+
+						grid_preset_mode = false;
+						grid_refresh = &amDraw;
 					}
 
 					flashc_memset32((void*)&(f.kria_state.clock_period), clock_period, 4, true);
@@ -1043,7 +1069,7 @@ void handler_KriaGridKey(s32 data) {
 		// FAST PRESS
 		if(key_times[index] > 0) {
 			// PRESET MODE FAST PRESS DETECT
-			if(preset_mode == 1) {
+			if(grid_preset_mode == 1) {
 				if(x == 0) {
 					if(y != preset) {
 						preset = y;
@@ -1060,7 +1086,7 @@ void handler_KriaGridKey(s32 data) {
 						init_kria();
 						resume_kria();
 
-						preset_mode = false;
+						grid_preset_mode = false;
 						grid_refresh = &refresh_kria;
 
 						// print_dbg("\r\npreset RECALL:");
@@ -1087,7 +1113,7 @@ void handler_KriaGridKey(s32 data) {
 	}
 
 	// PRESET SCREEN
-	if(preset_mode) {
+	if(grid_preset_mode) {
 		// glyph magic
 		if(z && x > 7) {
 			k.glyph[y] ^= 1<<(x-8);
@@ -2528,7 +2554,7 @@ void resume_mp() {
 	grid_refresh = &refresh_mp;
 	view_clock = false;
 	view_config = false;
-	preset_mode = false;
+	grid_preset_mode = false;
 
 	preset = f.mp_state.preset;
 
@@ -2921,7 +2947,7 @@ void handler_MPGridKey(s32 data) {
 
 		// FAST PRESS
 		if(key_times[index] > 0) {
-			if(preset_mode) {
+			if(grid_preset_mode) {
 				if(x == 0) {
 					if(y != preset) {
 						preset = y;
@@ -2937,7 +2963,7 @@ void handler_MPGridKey(s32 data) {
 						flashc_memset8((void*)&(f.mp_state.preset), preset, 1, true);
 						init_mp();
 
-						preset_mode = false;
+						grid_preset_mode = false;
 						grid_refresh = &refresh_mp;
 
 						// print_dbg("\r\npreset RECALL:");
@@ -2955,7 +2981,7 @@ void handler_MPGridKey(s32 data) {
 	}
 
 	// PRESET SCREEN
-	if(preset_mode) {
+	if(grid_preset_mode) {
 		// draw glyph
 		if(z && x>7)
 			m.glyph[y] ^= 1<<(x-8);
