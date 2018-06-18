@@ -104,7 +104,7 @@ typedef struct {
 
 // variables extracted from .c so other source files can include them
 bool grid_preset_mode;
-u8 key_count = 0;
+u8 key_count;// = 0;
 u8 held_keys[32];
 u8 key_times[128];
 uint8_t preset;

@@ -59,7 +59,7 @@ usb flash
 // ansible
 #include "main.h"
 #include "ansible_grid.h"
-// #include "ansible_am.h"
+#include "ansible_am.h"
 #include "ansible_arc.h"
 #include "ansible_midi.h"
 #include "ansible_tt.h"
@@ -503,7 +503,7 @@ int main(void)
 		default_midi_standard();
 		default_midi_arp();
 		default_tt();
-		// amDefault();
+		amDefault();
 
 		flash_unfresh();
 	}

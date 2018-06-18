@@ -2,11 +2,11 @@
 
 #include "timers.h"
 
-// #include "ansible_am.h"
 #include "ansible_grid.h"
 #include "ansible_arc.h"
 #include "ansible_midi.h"
 #include "ansible_tt.h"
+#include "ansible_am.h"
 
 #define TR1 B02
 #define TR2 B03
@@ -51,7 +51,7 @@ typedef const struct {
 	uint8_t fresh;
 	ansible_state_t state;
 	kria_state_t kria_state;
-	// amStateType am_state;
+	amStateType am_state;
 	mp_state_t mp_state;
 	levels_state_t levels_state;
 	cycles_state_t cycles_state;
